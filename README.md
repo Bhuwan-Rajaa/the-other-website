@@ -27,12 +27,12 @@ npm run preview
 
 1. Create a Supabase project. Keep **public signups and anonymous sign-ins disabled**. Enable email/password sign-in. Leave Auth rate limits enabled. Do not enable any public registration or password-reset flow.
 2. Run [`supabase/migrations/001_midnight_memories.sql`](supabase/migrations/001_midnight_memories.sql) once in the SQL editor. It creates the four tables, constraints, indexes, RLS policies, independent POV protections, atomic photo functions, and a private `memory-photos` bucket.
-3. In Authentication, manually create and confirm these two users. Set each user's PIN as their password **in the Supabase dashboard only**:
+3. In Authentication, use these two users. If they already exist, reuse them and check they are confirmed; otherwise manually create and confirm them. Each user's PIN is their Auth password, configured **in the Supabase dashboard only**:
 
-   | Login name in the app | Internal Auth email | Profile |
+   | Login name in the app | Configured Auth email | Profile |
    | --- | --- | --- |
-   | `BhuwanPooja` | `person-a@midnight-memories.internal` | Bhuwan / `person_a` |
-   | `PoojaBhuwan` | `person-b@midnight-memories.internal` | Pooja / `person_b` |
+   | `BhuwanPooja` | `bhuwan.rajaa21@gmail.com` | Bhuwan / `person_a` |
+   | `PoojaBhuwan` | `hahapooja28@gmail.com` | Pooja / `person_b` |
 
    PINs are not included in this repository. **The originally proposed four-digit PINs are shorter than Supabase's standard six-character password minimum. Choose longer replacements privately; the specification recommends at least eight numeric digits.** Do not concatenate a public login name with a short PIN to work around password requirements. See [Supabase Auth configuration](https://supabase.github.io/auth/) and [password security](https://supabase.com/docs/guides/auth/password-security).
 
@@ -47,7 +47,7 @@ npm run preview
    These are browser-facing values protected by RLS. **Never use the service-role key or put PINs in a `VITE_` variable.** `.env.local` is ignored by Git. Restart Vite after changing environment variables.
 6. Sign in separately as both people and complete the checks below before adding important memories.
 
-The initial migration is for a new database; rerunning it against an existing installation is intentionally not supported. Use a new migration for subsequent schema changes. The internal email identifiers are selectors, not secrets, and receive no email.
+The initial migration is for a new database; rerunning it against an existing installation is intentionally not supported. Use a new migration for subsequent schema changes. Configured Auth emails select the existing accounts; the website continues to display the login names. Reuse existing Auth users so their UUIDs still match `profiles.id`.
 
 ## How it works
 

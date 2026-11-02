@@ -12,6 +12,7 @@
 
 - Person A: **Bhuwan**, login name `BhuwanPooja`.
 - Person B: **Pooja**, login name `PoojaBhuwan`.
+- Map both login names to the existing Supabase Auth email addresses configured in `src/config.ts`; reuse their Auth UUIDs for the corresponding profiles.
 - Configure each person's PIN privately in Supabase Auth; do not record PINs in project files.
 - Relationship start date: **August 14, 2026** (`2026-08-14`). The relationship anniversary repeats annually on August 14.
 - Day we met: **November 17, 2025** (`2025-11-17`), recorded as a separate milestone.
@@ -120,7 +121,7 @@ Names and the displayed order must be configurable. Normalize leading/trailing s
 - Disable public sign-ups. There must be no registration screen or registration endpoint in the app.
 - Treat the entered name pair as the account selector and the PIN as that account's password.
 - Map each accepted name order to one of the two pre-created Supabase Auth identities, then use Supabase Auth password sign-in.
-- Use non-personal internal login identifiers for the Supabase Auth accounts if email/password sign-in is used; they do not need to be real contact addresses when email delivery is not part of the product.
+- Use the two existing Supabase Auth email identities confirmed during setup and configured in `src/config.ts`. The website uses the name pair as the account selector and does not display the email addresses in the login UI.
 - Never store a plaintext PIN in the database, source code, frontend environment variables, or logs. Supabase Auth must handle password hashing and session management.
 - Use an individual, non-reused PIN for each person. Prefer at least 8 numeric digits rather than a short 4-digit PIN.
 - Respect Supabase Auth rate limits and show a generic invalid-login error. Do not reveal whether the pair or PIN was the incorrect part.

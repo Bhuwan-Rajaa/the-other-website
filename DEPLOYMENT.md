@@ -62,14 +62,14 @@ The migration also enables RLS and installs policies, POV ownership checks, and 
 
 ## 5. Create Bhuwan's and Pooja's accounts
 
-Go to **Authentication → Users → Add user → Create new user**. Create these exact accounts:
+Go to **Authentication → Users**. Reuse these existing accounts if already created. Otherwise choose **Add user → Create new user**:
 
-| Person | Internal email entered in Supabase | Password entered in Supabase | Auto Confirm User |
+| Person | Configured email in Supabase | Password entered in Supabase | Auto Confirm User |
 | --- | --- | --- | --- |
-| Bhuwan | `person-a@midnight-memories.internal` | Bhuwan's privately chosen longer PIN | ON |
-| Pooja | `person-b@midnight-memories.internal` | Pooja's privately chosen longer PIN | ON |
+| Bhuwan | `bhuwan.rajaa21@gmail.com` | Bhuwan's privately chosen longer PIN | ON |
+| Pooja | `hahapooja28@gmail.com` | Pooja's privately chosen longer PIN | ON |
 
-Use **Create new user**, not an email invitation. These are internal identifiers, not working email inboxes. Auto-confirm each user so neither account needs to follow an email link.
+For a new account, use **Create new user** and auto-confirm the user. For an existing account, verify that it is confirmed. Keep the existing Auth UUIDs when updating login mappings so the `profiles` rows continue to match. The login names shown on the website are `BhuwanPooja` and `PoojaBhuwan`; each maps to the corresponding email above through `src/config.ts`.
 
 Copy each user's **UID/UUID** from the Users page. Keep track of which ID belongs to which person.
 
