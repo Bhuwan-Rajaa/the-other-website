@@ -21,7 +21,7 @@ npm run build
 npm run preview
 ```
 
-`npm test` checks date configuration, anniversary recurrence, calendar boundaries, timezone conversions including DST, busy/maybe precedence, merging, and cross-midnight overlaps. It uses Node's built-in test runner and type stripping. `npm run build` checks TypeScript and generates `dist/`.
+`npm test` checks date configuration, anniversary recurrence, calendar boundaries, timezone conversions including DST, busy/maybe precedence, merging, and cross-midnight overlaps. It uses Node's built-in test runner and type stripping. `npm run build` verifies the lockfile's native platform packages, checks TypeScript, and generates `dist/`.
 
 ## Connect Supabase
 
@@ -103,5 +103,4 @@ src/
 supabase/       Initial migration and two-profile setup
 tests/          Core logic tests and optional browser smoke test
 ```
-#   t h e - o t h e r - w e b s i t e  
- 
+# the-other-website

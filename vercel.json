@@ -1,4 +1,7 @@
 {
+  "framework": "vite",
+  "installCommand": "npm ci --include=optional",
+  "buildCommand": "npm run build",
   "rewrites": [{ "source": "/((?!assets/|favicon.svg).*)", "destination": "/index.html" }],
   "headers": [{
     "source": "/(.*)",

@@ -116,7 +116,7 @@ Restart `npm run dev`. The sample-preview entry point will disappear and real si
    | --- | --- |
    | Framework preset | Vite |
    | Root directory | Repository root; leave the default |
-   | Install command | `npm ci` |
+   | Install command | `npm ci --include=optional` |
    | Build command | `npm run build` |
    | Output directory | `dist` |
    | Production branch | `main` |
@@ -137,6 +137,8 @@ Restart `npm run dev`. The sample-preview entry point will disappear and real si
 Vercel environment variables are read when this Vite app is built. If you add or correct a variable after deployment, create a new deployment using **Deployments → latest deployment → Redeploy**.
 
 The repository already includes `vercel.json` for frontend-route refreshes. Do not enable GitHub Pages for this setup.
+
+`vercel.json` also specifies the install and build commands. Keep optional dependencies enabled: Vite's Rolldown bundler and Lightning CSS need platform-specific native packages. The build checks that the lockfile contains every declared platform package, including the Linux packages used by Vercel. Regenerate a damaged lockfile from a clean checkout rather than from an existing Windows-only `node_modules` tree.
 
 ## 9. Set the production address in Supabase
 
