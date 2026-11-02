@@ -2,12 +2,16 @@ export type Role = 'person_a' | 'person_b';
 export type Status = 'planned' | 'confirmed' | 'completed' | 'cancelled';
 export interface Profile { id: string; display_name: string; role: Role }
 export interface Photo { path: string; caption: string; sort_order: number; alt?: string }
+export interface VoiceNote {
+  id: string; path: string; title: string; created_by: string;
+  created_at: string; duration_seconds: number | null;
+}
 export interface Memory {
   id: string; event_date: string; title: string; status: Status;
   location: string | null; start_time: string | null; end_time: string | null;
   description: string | null; person_a_pov: string | null; person_b_pov: string | null;
   person_a_rating: number | null; person_b_rating: number | null;
-  photos: Photo[]; extras: Record<string, string>;
+  photos: Photo[]; voice_notes?: VoiceNote[]; extras: Record<string, string>;
   created_by: string; created_at: string; updated_at: string;
 }
 export interface Availability {

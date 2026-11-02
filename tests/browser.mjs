@@ -23,6 +23,7 @@ try {
   await page.locator('.topbar-add').click();
   const dialog = page.getByRole('dialog');
   await dialog.getByLabel('What shall we call it?').fill('A test moment');
+  assert.equal(await dialog.getByLabel('Photos (optional)').count(), 1);
   assert.equal(await dialog.getByRole('button', { name: 'Save our moment' }).isDisabled(), true);
   await page.keyboard.press('Escape');
   assert.equal(await page.getByRole('dialog').count(), 0);
@@ -44,6 +45,14 @@ try {
   assert.equal(await page.locator('.memory-card').count(), 1);
   await page.locator('.memory-card').click();
   await page.getByRole('heading', { name: 'Coffee & all the little things' }).waitFor();
+  await page.getByRole('heading', { name: 'Hear this moment again' }).waitFor();
+  assert.equal(await page.getByRole('button', { name: 'Record a note' }).isDisabled(), true);
+  assert.equal(await page.getByRole('button', { name: 'Upload audio' }).isDisabled(), true);
+  assert.equal(await page.getByRole('button', { name: 'Add photos', exact: true }).isDisabled(), true);
+  assert.equal(await page.getByRole('button', { name: 'Take photo', exact: true }).isDisabled(), true);
+  await page.setViewportSize({ width: 320, height: 720 });
+  assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'Memory media controls overflow at 320px');
+  await page.setViewportSize({ width: 1440, height: 1050 });
   assert.equal(await page.getByRole('textbox', { name: 'Bhuwan’s point of view' }).count(), 1);
   assert.equal(await page.getByRole('textbox', { name: 'Pooja’s point of view' }).count(), 0);
   await page.getByRole('button', { name: 'Delete memory', exact: true }).click();

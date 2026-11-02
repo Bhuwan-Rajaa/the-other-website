@@ -1,16 +1,17 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, CalendarDays, Camera, Check, Clock3, MapPin, Pencil, Star, Trash2, Upload } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useWorkspace } from '../context/WorkspaceContext';
 import { useResource } from '../hooks/useResource';
-import { addPhoto, captionPhoto, deleteMemory, getMemory, savePov } from '../services/memoryService';
-import { database, readableError } from '../services/supabase';
-import { allowedImages, uploadImage } from '../utils/imageUpload';
+import { captionPhoto, deleteMemory, getMemory, savePov, uploadMemoryPhoto } from '../services/memoryService';
+import { readableError } from '../services/supabase';
+import { allowedImages } from '../utils/imageUpload';
 import { clockLabel, dateLabel } from '../utils/dates';
 import { previewMemories } from '../data/preview';
 import { EmptyState, ErrorMessage, Loading, PhotoImage, PreviewNotice, Sheet } from '../components/ui';
 import type { Memory, Photo, Role } from '../types';
+import { VoiceNotes } from '../components/VoiceNotes';
 
 export default function MemoryPage() {
   const { id = '' } = useParams(), { preview } = useAuth();
@@ -20,20 +21,19 @@ export default function MemoryPage() {
   const { data: memory, loading, error, retry } = useResource<Memory | null>(() => getMemory(id), sample, id);
   const [confirmDelete, setConfirmDelete] = useState(false), [deleting, setDeleting] = useState(false), [deleteError, setDeleteError] = useState('');
   const [photoError, setPhotoError] = useState(''), [uploading, setUploading] = useState(false);
+  const photoInput = useRef<HTMLInputElement>(null), cameraInput = useRef<HTMLInputElement>(null);
   async function upload(files: FileList | null) {
     if (!files?.length || !memory || preview || uploading) return;
     if (memory.photos.length + files.length > 50) { setPhotoError('A memory can hold up to 50 photos.'); return; }
     setUploading(true); setPhotoError('');
-    let orphan: string | null = null, count = 0;
+    let count = 0;
     try {
       for (const file of Array.from(files)) {
-        orphan = await uploadImage(file, `memories/${memory.id}`);
-        await addPhoto(memory.id, { path: orphan, caption: '', sort_order: memory.photos.length + count, alt: '' });
-        orphan = null; count++;
+        await uploadMemoryPhoto(memory.id, file, memory.photos.length + count);
+        count++;
       }
       changed(`${count} ${count === 1 ? 'photo' : 'photos'}, kept with our story.`);
     } catch (issue) {
-      if (orphan) { try { await database().storage.from('memory-photos').remove([orphan]); } catch { /* A later manual cleanup may be needed if disconnected. */ } }
       setPhotoError(`${readableError(issue)}${count ? ` ${count} earlier photos were saved.` : ''}`);
       if (count) changed(`${count} photos saved.`);
     } finally { setUploading(false); }
@@ -41,23 +41,27 @@ export default function MemoryPage() {
   async function remove() {
     if (!memory || preview || deleting) return;
     setDeleting(true); setDeleteError('');
-    try { await deleteMemory(memory); changed('Memory and its photos removed.'); setConfirmDelete(false); navigate('/memories'); }
+    try { await deleteMemory(memory); changed('Memory, photos, and voice notes removed.'); setConfirmDelete(false); navigate('/memories'); }
     catch (issue) { setDeleteError(readableError(issue)); } finally { setDeleting(false); }
   }
-  if (loading) return <Loading />;
-  if (error) return <ErrorMessage message={error} retry={retry} />;
+  if (loading && !memory) return <Loading />;
+  if (error && !memory) return <ErrorMessage message={error} retry={retry} />;
   if (!memory) return <EmptyState title="This page is still unwritten" description="That sample memory isn’t part of this preview." action={<Link to="/memories" className="button secondary">Back to our scrapbook</Link>} />;
-  return <div className="memory-detail"><Link className="text-link back-link" to="/memories"><ArrowLeft size={16} />Our scrapbook</Link>
+  return <div className="memory-detail" aria-busy={loading}><Link className="text-link back-link" to="/memories"><ArrowLeft size={16} />Our scrapbook</Link>
+    {error && <ErrorMessage message={error} retry={retry} />}
     <div className="page-heading"><div><p className="eyebrow">{memory.status === 'completed' ? 'A MOMENT THAT’S OURS' : 'SOMETHING TO LOOK FORWARD TO'}</p><h1>{memory.title}</h1><div className="memory-meta"><span><CalendarDays size={15} />{dateLabel(memory.event_date)}</span>{memory.start_time && <span><Clock3 size={15} />{clockLabel(memory.start_time)}{memory.end_time && ` – ${clockLabel(memory.end_time)}${memory.end_time <= memory.start_time ? ' (next day)' : ''}`}</span>}{memory.location && <span><MapPin size={15} />{memory.location}</span>}<span className={`status-badge ${memory.status}`}>{memory.status}</span></div></div><button className="button secondary" onClick={() => openMemory(memory.event_date, memory.status, memory)}><Pencil size={15} />Edit story</button></div>
     {memory.description && <p className="memory-description">{memory.description}</p>}
-    <section><div className="section-heading"><h2>Little frames of us</h2><label className={`button secondary ${uploading || preview ? 'disabled' : ''}`}><Upload size={15} />{uploading ? 'Adding photos…' : 'Add photos'}<input className="sr-only" type="file" multiple accept={allowedImages} disabled={uploading || preview} onChange={e => { void upload(e.target.files); e.target.value = ''; }} /></label></div><PreviewNotice />
+    <section><div className="section-heading photo-heading"><h2>Little frames of us</h2><div className="media-actions"><button className="button secondary" disabled={uploading || preview} onClick={() => photoInput.current?.click()}><Upload size={15} />{uploading ? 'Adding photos…' : 'Add photos'}</button><button className="button secondary" disabled={uploading || preview} onClick={() => cameraInput.current?.click()}><Camera size={15} />Take photo</button></div></div>
+      <input ref={photoInput} type="file" multiple accept={allowedImages} hidden onChange={e => { void upload(e.target.files); e.target.value = ''; }} />
+      <input ref={cameraInput} type="file" accept={allowedImages} capture="environment" hidden onChange={e => { void upload(e.target.files); e.target.value = ''; }} /><PreviewNotice />
       {photoError && <ErrorMessage message={photoError} />}
       {memory.photos.length ? <div className="detail-gallery">{memory.photos.map(photo => <PhotoCard memoryId={memory.id} photo={photo} key={photo.path} title={memory.title} />)}</div> : <div className="photo-empty"><Camera size={32} strokeWidth={1.2} /><h3>Some moments don’t need a photo.</h3><p>And some are just waiting for one. Add yours whenever you’re ready.</p></div>}
     </section>
+    <VoiceNotes memory={memory} />
     <section className="povs-section"><div className="section-heading"><div><p className="eyebrow">ONE MOMENT. TWO LITTLE WORLDS.</p><h2>Our sides of the story</h2></div></div><p className="section-description">Both stories are shared. Each of us writes our own.</p><div className="pov-grid"><PovPanel memory={memory} role="person_a" name="Bhuwan" /><PovPanel memory={memory} role="person_b" name="Pooja" /></div></section>
     {Object.entries(memory.extras).some(([, value]) => value) && <section className="scrapbook-extras"><h2>The little details</h2><dl>{Object.entries(memory.extras).filter(([, value]) => value).map(([key, value]) => <div key={key}><dt>{({ activity: 'What we did', song: 'Our soundtrack', quote: 'Words worth keeping', expense: 'Expense note', tickets: 'Tickets & bookings' } as Record<string, string>)[key] || key}</dt><dd>{value}</dd></div>)}</dl></section>}
     <footer className="memory-detail-footer"><Link to={`/calendar?date=${memory.event_date}`} className="text-link"><CalendarDays size={15} />Back to calendar</Link><button className="text-button danger-text" onClick={() => setConfirmDelete(true)}><Trash2 size={14} />Delete memory</button></footer>
-    {confirmDelete && <Sheet title="Let this moment go?" onClose={() => { if (!deleting) setConfirmDelete(false); }}><p className="delete-copy">Permanently delete <strong>“{memory.title}”</strong> and all its photos? Both sides of the story will also be removed. This cannot be undone.</p><PreviewNotice />{deleteError && <ErrorMessage message={deleteError} />}<div className="form-footer"><button className="button secondary" disabled={deleting} onClick={() => setConfirmDelete(false)}>Keep our memory</button><button className="button danger" disabled={deleting || preview} onClick={remove}>{deleting ? 'Removing…' : 'Delete permanently'}</button></div></Sheet>}
+    {confirmDelete && <Sheet title="Let this moment go?" onClose={() => { if (!deleting) setConfirmDelete(false); }}><p className="delete-copy">Permanently delete <strong>“{memory.title}”</strong>, all its photos, and its voice recordings? Both sides of the story will also be removed. This cannot be undone.</p><PreviewNotice />{deleteError && <ErrorMessage message={deleteError} />}<div className="form-footer"><button className="button secondary" disabled={deleting} onClick={() => setConfirmDelete(false)}>Keep our memory</button><button className="button danger" disabled={deleting || preview} onClick={remove}>{deleting ? 'Removing…' : 'Delete permanently'}</button></div></Sheet>}
   </div>;
 }
 function PhotoCard({ memoryId, photo, title }: { memoryId: string; photo: Photo; title: string }) {
@@ -74,9 +78,10 @@ function PhotoCard({ memoryId, photo, title }: { memoryId: string; photo: Photo;
 function PovPanel({ memory, role, name }: { memory: Memory; role: Role; name: string }) {
   const { profile, preview } = useAuth(), { changed } = useWorkspace();
   const own = profile?.role === role;
-  const [pov, setPov] = useState(memory[`${role}_pov`] || ''), [rating, setRating] = useState<number | null>(memory[`${role}_rating`]);
+  const storedPov = memory[`${role}_pov`] || '', storedRating = memory[`${role}_rating`];
+  const [pov, setPov] = useState(storedPov), [rating, setRating] = useState<number | null>(storedRating);
   const [busy, setBusy] = useState(false), [error, setError] = useState('');
-  useEffect(() => { setPov(memory[`${role}_pov`] || ''); setRating(memory[`${role}_rating`]); }, [memory, role]);
+  useEffect(() => { setPov(storedPov); setRating(storedRating); }, [memory.id, role, storedPov, storedRating]);
   async function submit(event: FormEvent) {
     event.preventDefault(); if (!own || preview || busy) return;
     setBusy(true); setError('');

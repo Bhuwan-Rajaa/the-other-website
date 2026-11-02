@@ -4,6 +4,17 @@ A private scrapbook and date planner for Bhuwan and Pooja. React, Vite, TypeScri
 
 For a first deployment with no existing projects, follow [the step-by-step GitHub, Supabase, and Vercel guide](DEPLOYMENT.md).
 
+## Enable photos and voice notes on an existing deployment
+
+1. In your existing Supabase project, open **SQL Editor → New query** and run [`supabase/migrations/002_memory_voice_notes.sql`](supabase/migrations/002_memory_voice_notes.sql) once. It adds voice-note metadata, atomic append/remove functions, and a private `memory-audio` bucket. It preserves existing memories and the photo bucket. Do not rerun migration 001 on an existing project.
+2. Commit and push the updated source to `main`, including the new migration, components, services, utilities, and `vercel.json`. Wait for the new Vercel deployment.
+3. Add photos directly in **Add memory**, or open an existing memory and choose **Add photos** / **Take photo**. Photos can have captions after saving.
+4. Open a saved memory, find **Hear this moment again**, and choose **Record a note** or **Upload audio**. Microphone permission is requested only when Record is selected. Stop the recording, listen to the draft, then choose **Save voice note**. Recording is limited to five minutes, files to 10 MB, and each memory to 20 voice notes.
+
+Audio uploads support MP3, M4A, WebM, OGG, WAV, and AAC. Browser recording chooses a supported codec; playback of an uploaded file depends on the browser supporting that format. Recordings are private and shared between the two accounts, served with expiring signed URLs, and can be deleted with confirmation. Deleting a memory also removes its voice recordings and photos. The microphone is released on stop, cancel, errors, or leaving the memory, including when a permission request finishes after navigation. Unfinished drafts are not persisted.
+
+Recording requires HTTPS (provided by Vercel) or localhost. The deployment permits same-origin microphone access in its Permissions Policy. No new environment variables or dependencies are needed. Real Android/iPhone microphone behavior, audio playback, and the live migration still require verification; unit tests use simulated media devices.
+
 ## Run locally
 
 Use **Node.js 22.14 or newer** and npm.
@@ -26,7 +37,7 @@ npm run preview
 ## Connect Supabase
 
 1. Create a Supabase project. Keep **public signups and anonymous sign-ins disabled**. Enable email/password sign-in. Leave Auth rate limits enabled. Do not enable any public registration or password-reset flow.
-2. Run [`supabase/migrations/001_midnight_memories.sql`](supabase/migrations/001_midnight_memories.sql) once in the SQL editor. It creates the four tables, constraints, indexes, RLS policies, independent POV protections, atomic photo functions, and a private `memory-photos` bucket.
+2. Run [`supabase/migrations/001_midnight_memories.sql`](supabase/migrations/001_midnight_memories.sql) once in the SQL editor, followed by [`supabase/migrations/002_memory_voice_notes.sql`](supabase/migrations/002_memory_voice_notes.sql). The first creates the four tables, constraints, indexes, RLS policies, independent POV protections, atomic photo functions, and a private `memory-photos` bucket. The second enables voice notes and a private audio bucket.
 3. In Authentication, use these two users. If they already exist, reuse them and check they are confirmed; otherwise manually create and confirm them. Each user's PIN is their Auth password, configured **in the Supabase dashboard only**:
 
    | Login name in the app | Configured Auth email | Profile |
@@ -53,11 +64,13 @@ The initial migration is for a new database; rerunning it against an existing in
 
 - `src/config.ts` holds the two login selectors, display names, timezone, relationship start, and meeting date. Names are matched ignoring case and surrounding spaces. PINs go directly to Supabase Auth.
 - Routes are protected by a verified profile. A third authenticated identity without one of the two profiles cannot access tables or photos. Profiles cannot be created or changed by the frontend.
+- Returning to a tab or receiving a token refresh for the same signed-in account preserves the mounted page, scroll position, open forms, selected files, and unsaved in-memory drafts. Profile verification runs when the account actually changes or a failed verification is retried. Logout and account changes clear the old profile immediately; late responses cannot restore a previous session. The Supabase client continues to manage and refresh tokens normally.
 - Plans and memories share one record. Editing status preserves its ID, notes, POVs, and photos. Only title and date are required when creating a record.
 - Either partner edits shared memory details. Reflection saves submit only that person's POV and rating. A database trigger also rejects inserts and updates that change the other person's reflection or rating.
 - Availability is stored as real timestamps. Busy slots override available intervals. Maybe slots are excluded from confirmed shared free time. All-day intervals use local calendar-day boundaries; end times at or before a start time continue into the following day. Ambiguous DST times use the earlier instant; nonexistent local times are rejected with a helpful message.
 - Photos are resized in the browser to at most 1920px, converted to JPEG, stored privately, and displayed with expiring signed URLs. JPG, PNG, and WebP up to 20 MB before resizing are accepted. HEIC must be converted first. Captions also serve as accessible image descriptions. Photo attachment and caption updates are atomic to avoid dropping a partner's concurrent upload.
-- Memory deletion removes photos first, then the record. If cleanup fails, the record is kept and an error is shown. If the row deletion fails after photo cleanup, retry deletion. Database and object storage changes cannot be one browser-side transaction; an interrupted failed upload can leave an unattached object, so review Storage when recovering from an interrupted upload.
+- Voice notes use `memories.voice_notes` and the private `memory-audio` bucket. Append and removal functions change only the selected note. A trigger validates metadata and prevents replacing an existing recording or impersonating the other person when adding a note. Audio uploads and recordings share the same player; no transcription or continuous recording is included.
+- Memory deletion reloads the latest media list and removes voice recordings and photos before the record. If cleanup fails, the record is kept and an error is shown. If row deletion fails after cleanup, retry deletion. Database and object storage changes cannot be one browser-side transaction; an interrupted failed upload can leave an unattached object, so review Storage when recovering from an interrupted upload.
 - Month and dashboard queries are bounded. The scrapbook shows up to 150 recent matching records; filter by month to browse older records. Title search runs against the database, including older records. The calendar fetches up to 1,000 records across the visible grid; increase or paginate that query if your usage ever reaches that size.
 - No service worker, offline write queue, installation prompt, or public registration is included. Connection failures display errors instead of successful saves.
 
@@ -79,10 +92,12 @@ The source has been type-checked and production-built locally; the core logic te
 After setup, verify:
 
 - Both accounts sign in with the correct selector and independently configured PIN. Wrong combinations get a generic error. Refresh restores a valid session; logout clears access.
+- With a real signed-in account, open an Add memory form, enter unsaved text and select a photo, switch to another tab/app, and return. The form, selected file, calendar month, and scroll position should remain. Repeat with an unsaved voice-note draft and with a token refresh. Real logout and switching between accounts must still clear access.
 - An unauthenticated client and a third authenticated test identity cannot read any of the four tables or the private bucket. Public signups remain disabled.
 - Bhuwan cannot change Pooja's POV/rating or availability through direct API requests, and vice versa. Also test attempts to insert the other person's POV and modify `created_by`.
 - Two memories on the same date remain separate. Completing a plan changes its existing row. Blank optional fields work.
 - Each person can add photos and captions. Refresh preserves them. Deletion requires the memory title in a confirmation and removes its storage objects.
+- Record, stop, preview, save, play, and delete voice notes as both users. Test denied microphone permission, a late permission grant after leaving the page, the five-minute recording limit, unsupported audio, interrupted uploads, and deletion of a memory with both photos and audio. Unauthenticated and third-party identities must not read the audio bucket. Confirm that adding photos does not discard an unsaved voice-note draft.
 - Availability overlapping a busy or maybe slot is never shown as confirmed shared free time. Check full days and overnight slots.
 - The anniversary uses August 14; the meeting milestone uses November 17. A repeating milestone shows its next occurrence; a one-time past milestone stays in the timeline.
 - Test on real Android Chrome and iPhone Safari, including the device keyboard, gallery/camera upload, portrait/landscape, 320px widths, focus indicators, keyboard navigation, reduced motion, slow connections, and airplane mode during saves.

@@ -54,9 +54,9 @@ The originally suggested four-digit PINs do not meet Supabase's standard six-cha
 1. Open **SQL Editor → New query** in Supabase.
 2. Open [`supabase/migrations/001_midnight_memories.sql`](supabase/migrations/001_midnight_memories.sql) locally or on GitHub.
 3. Copy the whole file into the SQL editor, including `begin;` and `commit;`.
-4. Click **Run**. Run this initial migration once against your new database. If a warning asks you to review SQL or security changes, review the named objects before proceeding.
+4. Click **Run**. Run this initial migration once against your new database. Then run [`supabase/migrations/002_memory_voice_notes.sql`](supabase/migrations/002_memory_voice_notes.sql) in another query to enable voice recordings. If a warning asks you to review SQL or security changes, review the named objects before proceeding.
 5. Check **Table Editor**: the `public` schema should contain `profiles`, `memories`, `availability`, and `milestones`.
-6. Check **Storage**: `memory-photos` should exist and be **private**, with its public-bucket toggle OFF.
+6. Check **Storage**: `memory-photos` and `memory-audio` should exist and be **private**, with their public-bucket toggles OFF.
 
 The migration also enables RLS and installs policies, POV ownership checks, and atomic photo functions. Do not disable RLS to fix a login or save error.
 
@@ -158,6 +158,8 @@ The current password-login flow does not use email redirects, so additional redi
 8. Repeat the main flows on your Android and iPhone browsers. Complete the privacy and real-device checks in `README.md` before treating the app as release-ready.
 
 ## Updating the website later
+
+For the photos and voice-notes update on an existing database, run **only migration 002** once in Supabase SQL Editor before deploying the new source. Existing photos and memories are preserved. Photos can be added during memory creation or in the detail page; recording, audio upload, and playback are on each saved memory's detail page. No additional environment variables are required.
 
 After changing source files and running appropriate checks:
 

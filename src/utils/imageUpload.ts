@@ -1,9 +1,13 @@
 import { database } from '../services/supabase';
 
 export const allowedImages = 'image/jpeg,image/png,image/webp';
-export async function uploadImage(file: File, folder: string) {
+export function validateImage(file: File) {
   if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) throw new Error('Choose a JPG, PNG, or WebP photo. Convert HEIC photos to JPG before uploading.');
   if (file.size > 20 * 1024 * 1024) throw new Error('Choose a photo smaller than 20 MB.');
+  if (!file.size) throw new Error('This photo is empty. Choose another image.');
+}
+export async function uploadImage(file: File, folder: string) {
+  validateImage(file);
   const bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' });
   const scale = Math.min(1, 1920 / Math.max(bitmap.width, bitmap.height));
   const canvas = document.createElement('canvas');

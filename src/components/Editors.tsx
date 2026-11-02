@@ -1,15 +1,15 @@
 import { useState, type FormEvent, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Check, Trash2 } from 'lucide-react';
+import { Camera, Check, Trash2, X } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useWorkspace, type Editor } from '../context/WorkspaceContext';
-import { saveMemory } from '../services/memoryService';
+import { saveMemory, uploadMemoryPhoto } from '../services/memoryService';
 import { deleteAvailability, saveAvailability } from '../services/availabilityService';
 import { saveMilestone } from '../services/milestoneService';
 import { readableError, database } from '../services/supabase';
 import { addDays, atLocal, dayBounds, localDate, localTime, today } from '../utils/dates';
-import { allowedImages, uploadImage } from '../utils/imageUpload';
-import type { Status } from '../types';
+import { allowedImages, uploadImage, validateImage } from '../utils/imageUpload';
+import type { Memory, Status } from '../types';
 import { ErrorMessage, PreviewNotice, Sheet } from './ui';
 
 function Field({ label, children }: { label: string; children: ReactNode }) {
@@ -29,7 +29,18 @@ function MemoryEditor({ editor }: { editor: Extract<Editor, { type: 'memory' }> 
   const { changed, closeEditor } = useWorkspace();
   const navigate = useNavigate();
   const memory = editor.memory;
+  const [savedMemory, setSavedMemory] = useState<Memory | undefined>(memory);
+  const [photos, setPhotos] = useState<File[]>([]);
   const [error, setError] = useState(''), [saving, setSaving] = useState(false);
+  function selectPhotos(files: FileList | null) {
+    if (!files || saving || preview) return;
+    try {
+      const selected = Array.from(files);
+      selected.forEach(validateImage);
+      if ((savedMemory?.photos.length || 0) + photos.length + selected.length > 50) throw new Error('A memory can hold up to 50 photos.');
+      setPhotos(current => [...current, ...selected]); setError('');
+    } catch (issue) { setError(readableError(issue)); }
+  }
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); if (preview || saving) return;
     const values = new FormData(event.currentTarget);
@@ -37,6 +48,7 @@ function MemoryEditor({ editor }: { editor: Extract<Editor, { type: 'memory' }> 
     if (!text('title')) { setError('Give this moment a title before saving.'); return; }
     if (text('end') && !text('start')) { setError('Add a start time when you enter an end time.'); return; }
     setSaving(true); setError('');
+    let detailsSaved = false;
     try {
       const extras = { ...memory?.extras };
       for (const key of ['activity', 'song', 'quote', 'expense', 'tickets']) {
@@ -45,9 +57,17 @@ function MemoryEditor({ editor }: { editor: Extract<Editor, { type: 'memory' }> 
       const saved = await saveMemory({ title: text('title'), event_date: text('date'), status: text('status') as Status,
         location: text('location') || null, start_time: text('start') || null, end_time: text('end') || null,
         description: text('description') || null, extras,
-      }, profile!.id, memory?.id);
+      }, profile!.id, savedMemory?.id);
+      setSavedMemory(saved); detailsSaved = true;
+      let count = 0;
+      for (const file of photos) {
+        const photo = await uploadMemoryPhoto(saved.id, file, saved.photos.length + count);
+        count++;
+        setPhotos(current => current.filter(item => item !== file));
+        setSavedMemory(current => current ? { ...current, photos: [...current.photos, photo] } : current);
+      }
       changed(memory ? 'Our story, updated.' : 'A new little moment, kept.'); closeEditor(); navigate(`/memories/${saved.id}`);
-    } catch (issue) { setError(readableError(issue)); } finally { setSaving(false); }
+    } catch (issue) { setError(`${detailsSaved ? 'Your memory was saved, but some photos couldn’t be added. Retry to add the remaining photos, or open the saved memory. ' : ''}${readableError(issue)}`); } finally { setSaving(false); }
   }
   return <form onSubmit={submit} className="editor-form">
     <Field label="What shall we call it? *"><input name="title" placeholder="An evening we’ll remember" defaultValue={memory?.title} maxLength={160} required autoFocus /></Field>
@@ -57,6 +77,7 @@ function MemoryEditor({ editor }: { editor: Extract<Editor, { type: 'memory' }> 
     <p className="field-help">An end time earlier than the start means the following day. Add a start time if you enter an end time.</p>
     <Field label="Where?"><input name="location" placeholder="A place, or just somewhere together" defaultValue={memory?.location || ''} maxLength={250} /></Field>
     <Field label="A few words"><textarea name="description" rows={3} placeholder="The little things you want to remember…" defaultValue={memory?.description || ''} maxLength={10000} /></Field>
+    <div className="form-photos"><Field label="Photos (optional)"><input type="file" accept={allowedImages} multiple disabled={saving || preview} onChange={event => { selectPhotos(event.target.files); event.target.value = ''; }} /></Field><label className={`button secondary camera-picker ${saving || preview ? 'disabled' : ''}`}><Camera size={16} />Take a photo<input className="sr-only" type="file" accept={allowedImages} capture="environment" disabled={saving || preview} onChange={event => { selectPhotos(event.target.files); event.target.value = ''; }} /></label>{photos.length > 0 && <ul className="pending-photos">{photos.map((file, index) => <li key={`${file.name}-${index}`}><span>{file.name}</span><button type="button" className="icon-button" aria-label={`Remove selected photo: ${file.name}`} disabled={saving} onClick={() => setPhotos(current => current.filter((_, i) => i !== index))}><X size={16} /></button></li>)}</ul>}</div>
     <details className="extra-details"><summary>Add little details <span>category, song, quote & more</span></summary>
       <Field label="Activity"><input name="activity" placeholder="Date night, a little escape…" defaultValue={memory?.extras.activity} maxLength={100} /></Field>
       <Field label="Our song"><input name="song" defaultValue={memory?.extras.song} maxLength={500} /></Field>
@@ -64,8 +85,9 @@ function MemoryEditor({ editor }: { editor: Extract<Editor, { type: 'memory' }> 
       <Field label="Expense note"><input name="expense" placeholder="Optional amount and currency" defaultValue={memory?.extras.expense} maxLength={250} /></Field>
       <Field label="Tickets & booking details"><textarea name="tickets" defaultValue={memory?.extras.tickets} maxLength={2000} /></Field>
     </details>
-    <p className="field-help">Photos and each person’s side of the story can be added after saving.</p>
+    <p className="field-help">You can add more photos, record a voice note, and write your side of the story after saving.</p>
     {error && <ErrorMessage message={error} />}
+    {error && savedMemory && <button type="button" className="text-link" disabled={saving} onClick={() => { changed('Our story, refreshed.'); closeEditor(); navigate(`/memories/${savedMemory.id}`); }}>Open saved memory</button>}
     <div className="form-footer"><button type="button" className="button secondary" onClick={closeEditor} disabled={saving}>Cancel</button><button className="button primary" disabled={saving || preview}><Check size={17} />{saving ? 'Keeping this moment…' : memory ? 'Save changes' : 'Save our moment'}</button></div>
   </form>;
 }

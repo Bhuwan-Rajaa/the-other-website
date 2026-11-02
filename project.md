@@ -57,6 +57,7 @@ The product should feel personal, polished, and nostalgic—not like a generic c
 - Future date plans.
 - Multiple memories or activities on the same calendar date.
 - Memory details, multiple photos, captions, and optional scrapbook information.
+- Voice-note recording, audio-file upload, and playback on saved memories.
 - Separate POV fields for each person on every memory.
 - Milestones and relationship anniversary information.
 - Responsive mobile and desktop layouts.
@@ -268,6 +269,7 @@ Each memory can contain:
 - Activity/category.
 - Description or shared notes.
 - Multiple photos, each with an optional caption.
+- Multiple shared voice notes, recorded in the browser or uploaded as audio files. Recording drafts can be played before saving; each saved note has a title and private playback controls.
 - Each person's POV, stored independently.
 - Optional ratings from each person.
 - Optional expenses, ticket/booking details, song, memorable quote, and other scrapbook details.
@@ -448,6 +450,7 @@ One row per planned date/activity/completed memory. Multiple rows may use the sa
 | `person_a_rating` | `smallint` | Optional; e.g. 1–5 |
 | `person_b_rating` | `smallint` | Optional; e.g. 1–5 |
 | `photos` | `jsonb` | Array of `{ path, caption, sort_order }`; paths point to Storage objects |
+| `voice_notes` | `jsonb` | Array of `{ id, path, title, created_by, created_at, duration_seconds }`; private audio paths, up to 20 notes |
 | `extras` | `jsonb` | Optional activity, expense, ticket, song, quote, and other scrapbook details |
 | `created_by` | `uuid` | References `profiles.id` |
 | `created_at` | `timestamptz` | Default `now()` |
@@ -490,7 +493,9 @@ Keep the relationship start date in a small application configuration value or a
 
 ### Storage
 
-Create one **private** Supabase Storage bucket, for example `memory-photos`.
+Store photos in the **private** Supabase Storage bucket `memory-photos`.
+
+The voice-notes update adds a second private bucket, `memory-audio`, using migration `002_memory_voice_notes.sql`. Audio files are limited to 10 MB, browser recordings to five minutes, and each memory to 20 voice notes. Request microphone permission only when recording is started; stop microphone tracks on stop, cancellation, error, or navigation. Use authenticated access and signed URLs for playback, and remove recordings when deleting a voice note or its parent memory.
 
 - Store actual image files in Storage, not in PostgreSQL.
 - Store only the object path and caption in `memories.photos`.
