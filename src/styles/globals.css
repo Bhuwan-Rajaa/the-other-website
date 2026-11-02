@@ -284,11 +284,28 @@ input::file-selector-button { color: var(--text); background: #33272e; padding: 
 .pending-photos { list-style: none; padding: 0; margin: 0; }
 .pending-photos li { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 11px; color: var(--muted); border-top: 1px solid var(--border); }
 .pending-photos li > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.povs-section { margin-top: 40px; }
+.povs-section { margin: 42px 0 46px; }
+.povs-section > .section-heading h2 { font-size: clamp(27px, 2.5vw, 35px); letter-spacing: -.7px; }
+.povs-section > .section-description { font-size: 13px; line-height: 1.8; max-width: 65ch; margin-bottom: 25px; }
 .section-description { font-size: 11px; color: var(--muted); margin-bottom: 20px; }
-.pov-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.pov-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 28px; }
 .pov-panel { padding: 25px; background: #241a2055; border: 1px solid #9e58752a; border-radius: 10px; }
 .pov-panel.person_b { background: #29211944; border-color: #d2b48a22; }
+.povs-section .pov-panel { min-width: 0; padding: clamp(20px, 3.5vw, 44px); border-radius: 12px; }
+.povs-section .pov-panel > header, .pov-writing, .pov-reading { max-width: 82ch; margin-inline: auto; }
+.povs-section .pov-panel > header { gap: 15px; margin-bottom: 28px; padding-bottom: 24px; border-bottom: 1px solid var(--border); }
+.povs-section .pov-panel h3 { font-size: clamp(23px, 2.4vw, 30px); }
+.povs-section .pov-panel header > div > span { font-size: 12px; line-height: 1.7; margin-top: 7px; }
+.povs-section .pov-panel .avatar { width: 44px; height: 44px; font-size: 19px; }
+.povs-section .pov-panel .you-badge { font-size: 9px; padding: 5px 8px; }
+.povs-section .pov-panel textarea { min-height: 360px; padding: 21px 23px; font: 18px/1.95 var(--serif); background: #15111444; resize: none; overflow-y: hidden; }
+.pov-writing-meta { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px 18px; color: var(--muted); font-size: 11px; line-height: 1.8; margin: 12px 1px 0; }
+.pov-actions { display: flex; align-items: flex-end; justify-content: space-between; flex-wrap: wrap; gap: 15px 25px; padding-top: 10px; margin-top: 17px; border-top: 1px solid var(--border); }
+.pov-actions .star-rating { padding: 0; }
+.pov-actions .button { margin-bottom: 5px; }
+.povs-section .pov-copy { font: 19px/2 var(--serif); min-height: 190px; padding: 0 2px 25px; }
+.povs-section .pov-copy.empty-pov { min-height: 145px; }
+.pov-reading > .field-help { border-top: 1px solid var(--border); padding-top: 20px; margin-top: 15px; }
 .pov-panel header { display: flex; align-items: center; gap: 12px; margin-bottom: 23px; }
 .pov-panel h3 { font-size: 20px; }
 .pov-panel header > div > span { display: block; font-size: 10px; color: var(--muted); margin-top: 4px; }
@@ -443,6 +460,15 @@ input::file-selector-button { color: var(--text); background: #33272e; padding: 
 @media(prefers-reduced-motion:reduce) { *,*::before,*::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; } .memory-card:hover .memory-card-image > img { transform: none; } .button:hover:not(:disabled) { transform: none; } }
 @media(max-width:540px) {
   .photo-heading { align-items: flex-start; flex-direction: column; gap: 15px; }
+  .povs-section { margin: 32px 0 37px; }
+  .pov-grid { gap: 22px; }
+  .povs-section .pov-panel > header { gap: 10px; padding-bottom: 20px; margin-bottom: 22px; }
+  .povs-section .pov-panel header > div > span { font-size: 10px; }
+  .povs-section .pov-panel textarea { min-height: 320px; font-size: 17px; line-height: 1.95; padding: 17px 15px; }
+  .povs-section .pov-copy { font-size: 18px; line-height: 1.95; min-height: 180px; }
+  .pov-writing-meta { font-size: 10px; }
+  .pov-actions { align-items: flex-start; flex-direction: column; gap: 16px; }
+  .pov-actions .button { width: 100%; }
   .photo-heading .media-actions { width: 100%; }
   .photo-heading .media-actions > .button { flex: 1; padding-inline: 12px; font-size: 11px; }
   .voice-composer, .voice-note { padding: 18px; }
