@@ -1,0 +1,14 @@
+node_modules/
+dist/
+.env*
+!.env.example
+*.local
+*.log
+playwright-report/
+test-results/
+.vite/
+.npm-cache/
+.browser-profile/
+.qa/
+*.tsbuildinfo
+.vercel/
